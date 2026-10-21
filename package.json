@@ -1,0 +1,25 @@
+{
+  "name": "hotspot-ring",
+  "version": "0.1.0",
+  "description": "Consistent hashing with bounded loads: routing keys to backend nodes without letting hot keys exhaust any one node.",
+  "license": "MIT",
+  "author": "Anjali Gupta",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run",
+    "bench": "tsx bench/run.ts",
+    "bench:quick": "tsx bench/run.ts --quick",
+    "demo": "tsx examples/demo.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "fast-check": "^4.10.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

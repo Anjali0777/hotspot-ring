@@ -14,9 +14,11 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
+import { BoundedRing } from "../src/bounded.js";
 import { ModN } from "../src/modn.js";
 import { Ring } from "../src/ring.js";
 import type { Router } from "../src/router.js";
+import { TwoChoice } from "../src/twochoice.js";
 import { Traffic, type TrafficSpec } from "./workload.js";
 
 const quick = process.argv.includes("--quick");
@@ -29,12 +31,17 @@ type Make = () => Router;
 export const routers: Array<[string, Make]> = [
   ["mod-n", () => new ModN(NODES)],
   ["ring (160 vnodes)", () => new Ring(NODES, 160)],
+  ["two choices", () => new TwoChoice(NODES)],
+  ["bounded ring ε=1.0", () => new BoundedRing(NODES, 1.0)],
+  ["bounded ring ε=0.25", () => new BoundedRing(NODES, 0.25)],
+  ["bounded ring ε=0.1", () => new BoundedRing(NODES, 0.1)],
 ];
 
 interface LoadResult {
   peakOverMean: number; // worst moment
   p99PeakOverMean: number; // 99th percentile of the per-step busiest node
   affinity: number;
+  meanWalk: number | undefined;
 }
 
 function loadRun(make: Make, spec: TrafficSpec): LoadResult {
@@ -72,6 +79,7 @@ function loadRun(make: Make, spec: TrafficSpec): LoadResult {
     peakOverMean: peaks[peaks.length - 1]!,
     p99PeakOverMean: peaks[Math.floor(peaks.length * 0.99)]!,
     affinity: repeats ? same / repeats : 1,
+    meanWalk: r instanceof BoundedRing ? r.meanWalk() : undefined,
   };
 }
 
@@ -125,11 +133,12 @@ out(`Node ${process.version}, ${quick ? "quick" : "full"} run`);
 
 for (const [label, spec] of scenarios) {
   out(`\n### ${label}\n`);
-  out("| router | peak / mean (worst) | peak / mean (p99) | affinity |");
-  out("|---|---:|---:|---:|");
+  out("| router | peak / mean (worst) | peak / mean (p99) | affinity | mean ring steps walked |");
+  out("|---|---:|---:|---:|---:|");
   for (const [name, make] of routers) {
     const res = loadRun(make, spec);
-    out(`| ${name} | ${res.peakOverMean.toFixed(2)} | ${res.p99PeakOverMean.toFixed(2)} | ${(res.affinity * 100).toFixed(1)}% |`);
+    const walk = res.meanWalk === undefined ? "–" : res.meanWalk.toFixed(2);
+    out(`| ${name} | ${res.peakOverMean.toFixed(2)} | ${res.p99PeakOverMean.toFixed(2)} | ${(res.affinity * 100).toFixed(1)}% | ${walk} |`);
   }
 }
 
